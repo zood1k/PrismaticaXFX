@@ -43,7 +43,7 @@ local Window = WindUi:CreateWindow({
 
 -- Add version tag
 local VersionTag = Window:Tag({
-    Title = "v1.8",
+    Title = "v1.7.1",
     Color = Color3.fromHex("#1E1E1E")
 })
 
