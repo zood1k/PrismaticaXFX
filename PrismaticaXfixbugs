@@ -287,7 +287,7 @@ local nameEspEnabled = false
 local distanceEspEnabled = false
 local EspTeamCheckEnabled = false
 
--- Optimized Fly System for PC and Mobile
+-- УЛУЧШЕННАЯ СИСТЕМА ПОЛЕТА ДЛЯ ПК И МОБИЛЬНЫХ УСТРОЙСТВ
 local function EnableFly()
     local character = LocalPlayer.Character
     if not character then return end
@@ -312,11 +312,14 @@ local function EnableFly()
     flyBodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
     flyBodyVelocity.Parent = rootPart
     
-    -- Mobile flight controls
+    -- УЛУЧШЕННОЕ УПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
     local mobileMoveDirection = Vector3.new(0, 0, 0)
     local mobileVertical = 0
     local mobileInputActive = false
-    
+    local touchId = nil
+    local touchStartPos = nil
+    local joystickRadius = 50
+
     local function HandleMobileFlight()
         if not UserInputService.TouchEnabled then return end
         
@@ -324,9 +327,14 @@ local function EnableFly()
         local moveDirection = Vector3.new(0, 0, 0)
         
         if mobileInputActive then
-            moveDirection = camera.CFrame.LookVector * mobileMoveDirection.Z + 
-                           camera.CFrame.RightVector * mobileMoveDirection.X +
-                           Vector3.new(0, mobileVertical, 0)
+            -- Преобразование джойстика в 3D движение относительно камеры
+            local cameraCF = camera.CFrame
+            local right = cameraCF.RightVector
+            local forward = cameraCF.LookVector
+            forward = Vector3.new(forward.X, 0, forward.Z).Unit
+            right = Vector3.new(right.X, 0, right.Z).Unit
+            
+            moveDirection = (forward * -mobileMoveDirection.Y + right * mobileMoveDirection.X + Vector3.new(0, mobileVertical, 0))
         end
         
         flyBodyGyro.CFrame = camera.CFrame
@@ -370,46 +378,68 @@ local function EnableFly()
         end
     end
     
-    -- Simple mobile touch controls
+    -- УЛУЧШЕННЫЙ ДЖОЙСТИК ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
     local mobileTouchConnection
     mobileTouchConnection = UserInputService.TouchStarted:Connect(function(input)
+        if touchId then return end
+        
         local viewportSize = Workspace.CurrentCamera.ViewportSize
         local touchPos = input.Position
         
+        -- Левая часть экрана для движения джойстиком
         if touchPos.X < viewportSize.X / 2 then
-            -- Left side - movement
+            touchId = input
+            touchStartPos = touchPos
             mobileInputActive = true
-            mobileMoveDirection = Vector3.new(0, 0, 1)
             
             local updateConnection
             updateConnection = UserInputService.TouchMoved:Connect(function(moveInput)
-                if moveInput == input then
-                    local center = Vector2.new(viewportSize.X / 4, viewportSize.Y / 2)
-                    local direction = (moveInput.Position - center).Unit
-                    mobileMoveDirection = Vector3.new(direction.X, 0, -direction.Y)
+                if moveInput == touchId then
+                    local delta = (moveInput.Position - touchStartPos)
+                    local distance = math.min(delta.Magnitude, joystickRadius)
+                    
+                    if distance > 5 then
+                        local direction = delta.Unit
+                        -- Нормализованные значения для плавного управления
+                        mobileMoveDirection = Vector3.new(
+                            direction.X * (distance / joystickRadius),
+                            direction.Y * (distance / joystickRadius),
+                            0
+                        )
+                    else
+                        mobileMoveDirection = Vector3.new(0, 0, 0)
+                    end
                 end
             end)
             
             UserInputService.TouchEnded:Connect(function(endInput)
-                if endInput == input then
+                if endInput == touchId then
                     mobileInputActive = false
                     mobileMoveDirection = Vector3.new(0, 0, 0)
+                    touchId = nil
+                    touchStartPos = nil
                     if updateConnection then
                         updateConnection:Disconnect()
                     end
                 end
             end)
         else
-            -- Right side - up/down
-            if touchPos.Y < viewportSize.Y / 2 then
-                mobileVertical = 1
+            -- Правая часть для управления высотой
+            touchId = input
+            local touchY = touchPos.Y
+            
+            if touchY < viewportSize.Y / 3 then
+                mobileVertical = 1 -- Вверх
+            elseif touchY > viewportSize.Y * 2/3 then
+                mobileVertical = -1 -- Вниз
             else
-                mobileVertical = -1
+                mobileVertical = 0 -- Нейтрально
             end
             
             UserInputService.TouchEnded:Connect(function(endInput)
-                if endInput == input then
+                if endInput == touchId then
                     mobileVertical = 0
+                    touchId = nil
                 end
             end)
         end
@@ -1476,10 +1506,10 @@ MovementSection:Slider({
     end
 })
 
--- Fixed Fly with optimized PC and mobile controls
+-- УЛУЧШЕННЫЙ ПОЛЕТ С ОПТИМИЗИРОВАННЫМ УПРАВЛЕНИЕМ
 local flyToggle = MovementSection:Toggle({
     Title = "Fly",
-    Desc = "Enable optimized fly (WASD for PC, touch for mobile)",
+    Desc = "Enable optimized fly (WASD for PC, joystick for mobile)",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
