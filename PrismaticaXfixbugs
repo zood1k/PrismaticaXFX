@@ -43,7 +43,7 @@ local Window = WindUi:CreateWindow({
 
 -- Add version tag
 local VersionTag = Window:Tag({
-    Title = "v1.7",
+    Title = "v1.8",
     Color = Color3.fromHex("#1E1E1E")
 })
 
@@ -296,10 +296,8 @@ local function EnableFly()
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoid or not rootPart then return end
     
-    -- Set humanoid state
     humanoid.PlatformStand = true
     
-    -- Create fly controllers
     if flyBodyGyro then flyBodyGyro:Destroy() end
     if flyBodyVelocity then flyBodyVelocity:Destroy() end
     
@@ -314,28 +312,48 @@ local function EnableFly()
     flyBodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
     flyBodyVelocity.Parent = rootPart
     
-    -- PC Controls (WASD + Space/Shift)
+    -- Mobile flight controls
+    local mobileMoveDirection = Vector3.new(0, 0, 0)
+    local mobileVertical = 0
+    local mobileInputActive = false
+    
+    local function HandleMobileFlight()
+        if not UserInputService.TouchEnabled then return end
+        
+        local camera = Workspace.CurrentCamera
+        local moveDirection = Vector3.new(0, 0, 0)
+        
+        if mobileInputActive then
+            moveDirection = camera.CFrame.LookVector * mobileMoveDirection.Z + 
+                           camera.CFrame.RightVector * mobileMoveDirection.X +
+                           Vector3.new(0, mobileVertical, 0)
+        end
+        
+        flyBodyGyro.CFrame = camera.CFrame
+        
+        if moveDirection.Magnitude > 0 then
+            flyBodyVelocity.Velocity = moveDirection.Unit * FlySpeed
+        else
+            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
+    end
+    
     local function HandlePCFlight()
         local camera = Workspace.CurrentCamera
         local moveDirection = Vector3.new(0, 0, 0)
         
-        -- Forward/Backward (W/S)
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then
             moveDirection = moveDirection + camera.CFrame.LookVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then
             moveDirection = moveDirection - camera.CFrame.LookVector
         end
-        
-        -- Left/Right (A/D)
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then
             moveDirection = moveDirection - camera.CFrame.RightVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then
             moveDirection = moveDirection + camera.CFrame.RightVector
         end
-        
-        -- Up/Down (Space/Shift)
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
             moveDirection = moveDirection + Vector3.new(0, 1, 0)
         end
@@ -343,45 +361,60 @@ local function EnableFly()
             moveDirection = moveDirection + Vector3.new(0, -1, 0)
         end
         
-        -- Apply movement
+        flyBodyGyro.CFrame = camera.CFrame
+        
         if moveDirection.Magnitude > 0 then
             flyBodyVelocity.Velocity = moveDirection.Unit * FlySpeed
         else
             flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
-        
-        -- Update gyro to match camera
-        flyBodyGyro.CFrame = camera.CFrame
     end
     
-    -- Mobile Controls (Virtual Joystick)
-    local function HandleMobileFlight()
-        local touchEnabled = UserInputService.TouchEnabled
-        if not touchEnabled then return end
+    -- Simple mobile touch controls
+    local mobileTouchConnection
+    mobileTouchConnection = UserInputService.TouchStarted:Connect(function(input)
+        local viewportSize = Workspace.CurrentCamera.ViewportSize
+        local touchPos = input.Position
         
-        -- Check for virtual joystick input
-        local moveDirection = Vector3.new(0, 0, 0)
-        local camera = Workspace.CurrentCamera
-        
-        -- Simple touch controls: 
-        -- Left side - movement
-        -- Right side - up/down
-        for _, input in pairs(UserInputService:GetConnectedGamepads()) do
-            local thumbstickPos = UserInputService:GetGamepadState(input)
-            -- Basic mobile controls implementation
-        end
-        
-        -- Apply movement
-        if moveDirection.Magnitude > 0 then
-            flyBodyVelocity.Velocity = moveDirection.Unit * FlySpeed
+        if touchPos.X < viewportSize.X / 2 then
+            -- Left side - movement
+            mobileInputActive = true
+            mobileMoveDirection = Vector3.new(0, 0, 1)
+            
+            local updateConnection
+            updateConnection = UserInputService.TouchMoved:Connect(function(moveInput)
+                if moveInput == input then
+                    local center = Vector2.new(viewportSize.X / 4, viewportSize.Y / 2)
+                    local direction = (moveInput.Position - center).Unit
+                    mobileMoveDirection = Vector3.new(direction.X, 0, -direction.Y)
+                end
+            end)
+            
+            UserInputService.TouchEnded:Connect(function(endInput)
+                if endInput == input then
+                    mobileInputActive = false
+                    mobileMoveDirection = Vector3.new(0, 0, 0)
+                    if updateConnection then
+                        updateConnection:Disconnect()
+                    end
+                end
+            end)
         else
-            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            -- Right side - up/down
+            if touchPos.Y < viewportSize.Y / 2 then
+                mobileVertical = 1
+            else
+                mobileVertical = -1
+            end
+            
+            UserInputService.TouchEnded:Connect(function(endInput)
+                if endInput == input then
+                    mobileVertical = 0
+                end
+            end)
         end
-        
-        flyBodyGyro.CFrame = camera.CFrame
-    end
+    end)
     
-    -- Main flight loop
     if flyConnection then flyConnection:Disconnect() end
     flyConnection = RunService.Heartbeat:Connect(function()
         if not FlyEnabled or not character or not rootPart then
@@ -389,10 +422,12 @@ local function EnableFly()
                 flyConnection:Disconnect()
                 flyConnection = nil
             end
+            if mobileTouchConnection then
+                mobileTouchConnection:Disconnect()
+            end
             return
         end
         
-        -- Handle controls based on device type
         if UserInputService.KeyboardEnabled then
             HandlePCFlight()
         else
@@ -1444,7 +1479,7 @@ MovementSection:Slider({
 -- Fixed Fly with optimized PC and mobile controls
 local flyToggle = MovementSection:Toggle({
     Title = "Fly",
-    Desc = "Enable optimized fly (WASD for PC, intuitive for mobile)",
+    Desc = "Enable optimized fly (WASD for PC, touch for mobile)",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
