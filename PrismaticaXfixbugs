@@ -1,27 +1,10 @@
 -- Load WindUi library
 local WindUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
-local ContextActionService = game:GetService("ContextActionService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TextService = game:GetService("TextService")
-local Stats = game:GetService("Stats")
-
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-
--- Theme system
+-- Theme selector with saving
 local currentTheme = "Dark"
+
+-- Load saved theme
 local function LoadTheme()
     local success, savedTheme = pcall(function()
         return readfile("PrismaticaX_Theme.txt")
@@ -31,6 +14,7 @@ local function LoadTheme()
     end
 end
 
+-- Save theme
 local function SaveTheme(theme)
     currentTheme = theme
     pcall(function()
@@ -38,6 +22,7 @@ local function SaveTheme(theme)
     end)
 end
 
+-- Load theme on script start
 LoadTheme()
 
 -- Create main window
@@ -45,11 +30,11 @@ local Window = WindUi:CreateWindow({
     Title = "PrismaticaX",
     Icon = "sparkles",
     Author = "By @zood3llotgk",
-    Size = UDim2.fromOffset(650, 500),
+    Size = UDim2.fromOffset(600, 450),
     Theme = currentTheme,
     Acrylic = false,
     HideSearchBar = true,
-    SideBarWidth = 180,
+    SideBarWidth = 160,
     User = {
         Enabled = true,
         Anonymous = false
@@ -58,7 +43,7 @@ local Window = WindUi:CreateWindow({
 
 -- Add version tag
 local VersionTag = Window:Tag({
-    Title = "v1.7.2",
+    Title = "v1.7.1",
     Color = Color3.fromHex("#1E1E1E")
 })
 
@@ -117,6 +102,17 @@ WindUi:OnThemeChange(function(theme)
     TimeTag:SetColor(tagColor)
     WindUITag:SetColor(tagColor)
 end)
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local ContextActionService = game:GetService("ContextActionService")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 -- Add GUI visibility toggle with Insert key
 local isGuiVisible = true
@@ -291,7 +287,7 @@ local nameEspEnabled = false
 local distanceEspEnabled = false
 local EspTeamCheckEnabled = false
 
--- УЛУЧШЕННАЯ СИСТЕМА ПОЛЕТА (ИСПРАВЛЕННАЯ)
+-- УЛУЧШЕННАЯ СИСТЕМА ПОЛЕТА ДЛЯ ПК И МОБИЛЬНЫХ УСТРОЙСТВ
 local function EnableFly()
     local character = LocalPlayer.Character
     if not character then return end
@@ -316,58 +312,7 @@ local function EnableFly()
     flyBodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
     flyBodyVelocity.Parent = rootPart
     
-    -- Переменные для управления
-    local ctrl = {f = 0, b = 0, l = 0, r = 0}
-    local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-    local maxspeed = FlySpeed
-    local speed = 0
-    
-    -- Функция для ПК управления
-    local function HandlePCFlight()
-        ctrl = {f = 0, b = 0, l = 0, r = 0}
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            ctrl.f = 1
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            ctrl.b = -1
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            ctrl.l = -1
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            ctrl.r = 1
-        end
-        
-        if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-            speed = speed + 0.5 + (speed / maxspeed)
-            if speed > maxspeed then
-                speed = maxspeed
-            end
-        elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed ~= 0 then
-            speed = speed - 1
-            if speed < 0 then
-                speed = 0
-            end
-        end
-        
-        if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-            flyBodyVelocity.Velocity = ((Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f + ctrl.b)) + 
-                                      ((Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l + ctrl.r, (ctrl.f + ctrl.b) * 0.2, 0).p) - 
-                                      Workspace.CurrentCamera.CoordinateFrame.p)) * speed
-            lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-        elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed ~= 0 then
-            flyBodyVelocity.Velocity = ((Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f + lastctrl.b)) + 
-                                      ((Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l + lastctrl.r, (lastctrl.f + lastctrl.b) * 0.2, 0).p) - 
-                                      Workspace.CurrentCamera.CoordinateFrame.p)) * speed
-        else
-            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        end
-        
-        flyBodyGyro.cframe = Workspace.CurrentCamera.CoordinateFrame
-    end
-
-    -- Управление для мобильных устройств
+    -- УЛУЧШЕННОЕ УПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
     local mobileMoveDirection = Vector3.new(0, 0, 0)
     local mobileVertical = 0
     local mobileInputActive = false
@@ -382,7 +327,7 @@ local function EnableFly()
         local moveDirection = Vector3.new(0, 0, 0)
         
         if mobileInputActive then
-            -- Преобразование джойстика в 3D движение
+            -- Преобразование джойстика в 3D движение относительно камеры
             local cameraCF = camera.CFrame
             local right = cameraCF.RightVector
             local forward = cameraCF.LookVector
@@ -390,20 +335,50 @@ local function EnableFly()
             right = Vector3.new(right.X, 0, right.Z).Unit
             
             moveDirection = (forward * -mobileMoveDirection.Y + right * mobileMoveDirection.X + Vector3.new(0, mobileVertical, 0))
-            
-            if moveDirection.Magnitude > 0 then
-                flyBodyVelocity.Velocity = moveDirection.Unit * FlySpeed
-            else
-                flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-            end
-        else
-            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
         
         flyBodyGyro.CFrame = camera.CFrame
+        
+        if moveDirection.Magnitude > 0 then
+            flyBodyVelocity.Velocity = moveDirection.Unit * FlySpeed
+        else
+            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
     end
     
-    -- Джойстик для мобильных устройств
+    local function HandlePCFlight()
+        local camera = Workspace.CurrentCamera
+        local moveDirection = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection = moveDirection + Vector3.new(0, -1, 0)
+        end
+        
+        flyBodyGyro.CFrame = camera.CFrame
+        
+        if moveDirection.Magnitude > 0 then
+            flyBodyVelocity.Velocity = moveDirection.Unit * FlySpeed
+        else
+            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
+    end
+    
+    -- УЛУЧШЕННЫЙ ДЖОЙСТИК ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
     local mobileTouchConnection
     mobileTouchConnection = UserInputService.TouchStarted:Connect(function(input)
         if touchId then return end
@@ -411,7 +386,7 @@ local function EnableFly()
         local viewportSize = Workspace.CurrentCamera.ViewportSize
         local touchPos = input.Position
         
-        -- Левая часть экрана для движения
+        -- Левая часть экрана для движения джойстиком
         if touchPos.X < viewportSize.X / 2 then
             touchId = input
             touchStartPos = touchPos
@@ -425,6 +400,7 @@ local function EnableFly()
                     
                     if distance > 5 then
                         local direction = delta.Unit
+                        -- Нормализованные значения для плавного управления
                         mobileMoveDirection = Vector3.new(
                             direction.X * (distance / joystickRadius),
                             direction.Y * (distance / joystickRadius),
@@ -448,16 +424,16 @@ local function EnableFly()
                 end
             end)
         else
-            -- Правая часть для высоты
+            -- Правая часть для управления высотой
             touchId = input
             local touchY = touchPos.Y
             
             if touchY < viewportSize.Y / 3 then
-                mobileVertical = 1
+                mobileVertical = 1 -- Вверх
             elseif touchY > viewportSize.Y * 2/3 then
-                mobileVertical = -1
+                mobileVertical = -1 -- Вниз
             else
-                mobileVertical = 0
+                mobileVertical = 0 -- Нейтрально
             end
             
             UserInputService.TouchEnded:Connect(function(endInput)
@@ -469,7 +445,6 @@ local function EnableFly()
         end
     end)
     
-    -- Основной цикл полета
     if flyConnection then flyConnection:Disconnect() end
     flyConnection = RunService.Heartbeat:Connect(function()
         if not FlyEnabled or not character or not rootPart then
@@ -1531,7 +1506,7 @@ MovementSection:Slider({
     end
 })
 
--- УЛУЧШЕННЫЙ ПОЛЕТ С ИСПРАВЛЕННЫМ УПРАВЛЕНИЕМ
+-- УЛУЧШЕННЫЙ ПОЛЕТ С ОПТИМИЗИРОВАННЫМ УПРАВЛЕНИЕМ
 local flyToggle = MovementSection:Toggle({
     Title = "Fly",
     Desc = "Enable optimized fly (WASD for PC, joystick for mobile)",
@@ -2609,11 +2584,3 @@ end
 game:BindToClose(function()
     CleanupAll()
 end)
-
--- Notification that script is loaded
-WindUi:Notify({
-    Title = "PrismaticaX v2.0",
-    Content = "Successfully loaded! Enhanced by Neked AI",
-    Icon = "sparkles",
-    Duration = 5
-})
