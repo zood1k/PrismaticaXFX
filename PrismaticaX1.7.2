@@ -1,29 +1,58 @@
 -- Load WindUi library
 local WindUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local ContextActionService = game:GetService("ContextActionService")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
 -- Theme selector with saving
 local currentTheme = "Dark"
 
--- Load saved theme
-local function LoadTheme()
+-- Load saved theme and tag colors
+local function LoadSettings()
     local success, savedTheme = pcall(function()
         return readfile("PrismaticaX_Theme.txt")
     end)
     if success and savedTheme then
         currentTheme = savedTheme
     end
+    
+    -- Load tag colors
+    local success, savedTagColors = pcall(function()
+        return readfile("PrismaticaX_TagColors.txt")
+    end)
+    if success and savedTagColors then
+        return game:GetService("HttpService"):JSONDecode(savedTagColors)
+    end
+    
+    return nil
 end
 
--- Save theme
-local function SaveTheme(theme)
+-- Save theme and tag colors
+local function SaveSettings(theme, tagColors)
     currentTheme = theme
     pcall(function()
         writefile("PrismaticaX_Theme.txt", theme)
     end)
+    
+    -- Save tag colors
+    if tagColors then
+        pcall(function()
+            writefile("PrismaticaX_TagColors.txt", game:GetService("HttpService"):JSONEncode(tagColors))
+        end)
+    end
 end
 
--- Load theme on script start
-LoadTheme()
+-- Load settings on script start
+local savedTagColors = LoadSettings()
 
 -- Create main window
 local Window = WindUi:CreateWindow({
@@ -41,14 +70,45 @@ local Window = WindUi:CreateWindow({
     }
 })
 
+-- Function to get tag color for theme
+local function GetTagColorForTheme(theme)
+    if savedTagColors and savedTagColors[theme] then
+        return Color3.fromHex(savedTagColors[theme])
+    end
+    
+    local tagColors = {
+        Dark = "#1E1E1E",
+        Light = "#F0F0F0",
+        Rose = "#FF69B4",
+        Amber = "#FFBF00",
+        CottonCandy = "#FFB6C1",
+        Crimson = "#DC143C",
+        Emerald = "#50C878",
+        Indigo = "#4B0082",
+        Midnight = "#191970",
+        MonokaiPro = "#2D2A2E",
+        Plant = "#228B22",
+        Rainbow = "#FF0000",
+        Red = "#FF0000",
+        Violet = "#EE82EE",
+        Sky = "#87CEEB"
+    }
+    
+    return Color3.fromHex(tagColors[theme] or tagColors.Dark)
+end
+
 -- Add version tag
 local VersionTag = Window:Tag({
     Title = "v1.7.1",
-    Color = Color3.fromHex("#1E1E1E")
+    Color = GetTagColorForTheme(currentTheme)
 })
 
 -- Add time tag with MSK time
-local TimeTag = Window:Tag({ Title = "--:--", Color = Color3.fromHex("#1E1E1E") })
+local TimeTag = Window:Tag({ 
+    Title = "--:--", 
+    Color = GetTagColorForTheme(currentTheme) 
+})
+
 task.spawn(function()
     while true do
         local now = os.date("*t", os.time() + 0*3600)
@@ -59,74 +119,136 @@ end)
 
 local WindUITag = Window:Tag({
     Title = "WindUI",
-    Color = Color3.fromHex("#1E1E1E")
+    Color = GetTagColorForTheme(currentTheme)
 })
 
--- Change tag colors on theme change
-WindUi:OnThemeChange(function(theme)
-    local tagColor
-    if theme == "Dark" then
-        tagColor = Color3.fromHex("#1E1E1E")
-    elseif theme == "Light" then
-        tagColor = Color3.fromHex("#F0F0F0")
-    elseif theme == "Rose" then
-        tagColor = Color3.fromHex("#FF69B4")
-    elseif theme == "Amber" then
-        tagColor = Color3.fromHex("#FFBF00")
-    elseif theme == "CottonCandy" then
-        tagColor = Color3.fromHex("#FFB6C1")
-    elseif theme == "Crimson" then
-        tagColor = Color3.fromHex("#DC143C")
-    elseif theme == "Emerald" then
-        tagColor = Color3.fromHex("#50C878")
-    elseif theme == "Indigo" then
-        tagColor = Color3.fromHex("#4B0082")
-    elseif theme == "Midnight" then
-        tagColor = Color3.fromHex("#191970")
-    elseif theme == "MonokaiPro" then
-        tagColor = Color3.fromHex("#2D2A2E")
-    elseif theme == "Plant" then
-        tagColor = Color3.fromHex("#228B22")
-    elseif theme == "Rainbow" then
-        tagColor = Color3.fromHex("#FF0000")
-    elseif theme == "Red" then
-        tagColor = Color3.fromHex("#FF0000")
-    elseif theme == "Violet" then
-        tagColor = Color3.fromHex("#EE82EE")
-    elseif theme == "Sky" then
-        tagColor = Color3.fromHex("#87CEEB")
-    else
-        tagColor = Color3.fromHex("#1E1E1E")
-    end
+-- Function to update all tag colors
+local function UpdateTagColors(theme)
+    local tagColor = GetTagColorForTheme(theme)
     VersionTag:SetColor(tagColor)
     TimeTag:SetColor(tagColor)
     WindUITag:SetColor(tagColor)
+    
+    -- Save the tag color for this theme
+    if not savedTagColors then
+        savedTagColors = {}
+    end
+    savedTagColors[theme] = tagColor:ToHex()
+    SaveSettings(theme, savedTagColors)
+end
+
+-- Apply current theme colors
+UpdateTagColors(currentTheme)
+
+-- Change tag colors on theme change
+WindUi:OnThemeChange(function(theme)
+    UpdateTagColors(theme)
 end)
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local ContextActionService = game:GetService("ContextActionService")
-local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
-local TweenService = game:GetService("TweenService")
+-- Define tabs
+local Tabs = {
+    Visual = Window:Tab({ Title = "Visual", Icon = "palette" }),
+    Player = Window:Tab({ Title = "Player", Icon = "user" }),
+    Wallhack = Window:Tab({ Title = "Wallhack", Icon = "eye" }),
+    Aimbot = Window:Tab({ Title = "Aimbot", Icon = "sword" }),
+    Movement = Window:Tab({ Title = "Movement", Icon = "zap" }),
+    FlingFeatures = Window:Tab({ Title = "Troll", Icon = "smile" }),
+    Settings = Window:Tab({ Title = "Settings", Icon = "settings" }),
+    Themes = Window:Tab({ Title = "Themes", Icon = "palette" })
+}
 
--- Add GUI visibility toggle with Insert key
-local isGuiVisible = true
-local guiToggleConnection
-guiToggleConnection = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    if gameProcessedEvent then return end
-    if input.KeyCode == Enum.KeyCode.Insert then
-        isGuiVisible = not isGuiVisible
-        local screenGui = CoreGui:FindFirstChild("WindUI")
-        if screenGui then
-            screenGui.Enabled = isGuiVisible
+-- Define sections
+local VisualEffectsSection = Tabs.Visual:Section({ Title = "Visual Effects" })
+local ClearVisualSection = Tabs.Visual:Section({ Title = "Clear Visuals" })
+local PlayerModsSection = Tabs.Player:Section({ Title = "Player Mods" })
+local EspSection = Tabs.Wallhack:Section({ Title = "Player ESP" })
+local SizeEspSection = Tabs.Wallhack:Section({ Title = "Size ESP" })
+local ColorEspSection = Tabs.Wallhack:Section({ Title = "Settings Color ESP" })
+local AimbotSection = Tabs.Aimbot:Section({ Title = "Aimbot PC" })
+local AimbotTelephoneSection = Tabs.Aimbot:Section({ Title = "Aimbot Telephone" })
+local MovementSpinbotSection = Tabs.Movement:Section({ Title = "Spinbot" })
+local MovementFlySection = Tabs.Movement:Section({ Title = "Fly" })
+local FlingGuiSection = Tabs.FlingFeatures:Section({ Title = "Fling" })
+local SettingsUiSection = Tabs.Settings:Section({ Title = "GUI Settings" })
+local ThemesSection = Tabs.Themes:Section({ Title = "Theme" })
+
+-- Expand all sections
+task.spawn(function()
+    task.wait(0.1)
+    local CoreGui = game:GetService("CoreGui")
+    local screenGui = CoreGui:FindFirstChild("WindUI")
+    if not screenGui then return end
+
+    for _, frame in pairs(screenGui:GetDescendants()) do
+        if frame:IsA("Frame") and frame.Name:match("Section") then
+            for _, child in pairs(frame:GetChildren()) do
+                if child:IsA("Frame") and child.Visible == false then
+                    child.Visible = true
+                end
+            end
         end
     end
 end)
+
+-- Store all toggles for cleanup
+local allToggles = {}
+
+-- Player variables
+local OriginalWalkSpeed = 16
+local OriginalJumpPower = 50
+local OriginalJumpHeight = 7.2
+local OriginalUseJumpPower = true
+local CurrentWalkSpeed = 16
+local CurrentJumpPower = 50
+local InfiniteJumpEnabled = false
+local NoclipEnabled = false
+local FlyEnabled = false
+local FlySpeed = 50
+local flyBodyGyro
+local flyBodyVelocity
+local flyConnection
+local noclipConnection
+local speedConnection
+local jumpConnection
+local trails = {}
+local trailsCharConn
+local particleEmitter
+local particlesCharConn
+local chinaHat
+local chinaHatConn
+local starTrailEmitter
+local starTrailConn
+local aimbotEnabled = false
+local aimbotFOV = 200
+local aimbotConnection
+local fovCircle
+local fovScreenGui
+local lockedTarget = nil
+local aimbotActive = false
+local aimbotBind = "MB2"
+local aimbotMode = "Hold"
+local SpinbotEnabled = false
+local SpinbotSpeed = 10
+local spinbotConnection
+local TeamCheckEnabled = false
+local teamCheckConnection
+local WallCheckEnabled = false
+local wallCheckConnection
+local espTextSize = 25
+local espColor = Color3.fromRGB(255, 255, 255)
+local espRed = 255
+local espGreen = 255
+local espBlue = 255
+local trollGuiLoaded = false
+local highlightEspEnabled = false
+local nameEspEnabled = false
+local distanceEspEnabled = false
+local EspTeamCheckEnabled = false
+
+-- Fling All Variables
+local FlingAllEnabled = false
+local flingRunning = false
+local flingNoclipConn
 
 -- Centralized effect management
 local EffectManager = {
@@ -199,93 +321,100 @@ local function StopRainbowLoop()
     end
 end
 
--- Rainbow Ui Gradient
-task.spawn(function()
-    task.wait(0.5)
-    local CoreGui = game:GetService("CoreGui")
-    local screenGui = CoreGui:FindFirstChild("WindUI")
-    if not screenGui then return end
+-- Bind mappings
+local bindMap = {
+    MB1 = {Type = "UserInputType", Value = Enum.UserInputType.MouseButton1},
+    MB2 = {Type = "UserInputType", Value = Enum.UserInputType.MouseButton2},
+    MB3 = {Type = "UserInputType", Value = Enum.UserInputType.MouseButton3},
+    Q = {Type = "KeyCode", Value = Enum.KeyCode.Q},
+    E = {Type = "KeyCode", Value = Enum.KeyCode.E},
+    R = {Type = "KeyCode", Value = Enum.KeyCode.R},
+    T = {Type = "KeyCode", Value = Enum.KeyCode.T},
+    Y = {Type = "KeyCode", Value = Enum.KeyCode.Y},
+    U = {Type = "KeyCode", Value = Enum.KeyCode.U},
+    I = {Type = "KeyCode", Value = Enum.KeyCode.I},
+    O = {Type = "KeyCode", Value = Enum.KeyCode.O},
+    P = {Type = "KeyCode", Value = Enum.KeyCode.P},
+    F = {Type = "KeyCode", Value = Enum.KeyCode.F},
+    G = {Type = "KeyCode", Value = Enum.KeyCode.G},
+    H = {Type = "KeyCode", Value = Enum.KeyCode.H},
+    J = {Type = "KeyCode", Value = Enum.KeyCode.J},
+    K = {Type = "KeyCode", Value = Enum.KeyCode.K},
+    L = {Type = "KeyCode", Value = Enum.KeyCode.L},
+    Z = {Type = "KeyCode", Value = Enum.KeyCode.Z},
+    X = {Type = "KeyCode", Value = Enum.KeyCode.X},
+    C = {Type = "KeyCode", Value = Enum.KeyCode.C},
+    V = {Type = "KeyCode", Value = Enum.KeyCode.V},
+    B = {Type = "KeyCode", Value = Enum.KeyCode.B},
+    N = {Type = "KeyCode", Value = Enum.KeyCode.N},
+    M = {Type = "KeyCode", Value = Enum.KeyCode.M},
+    One = {Type = "KeyCode", Value = Enum.KeyCode.One},
+    Two = {Type = "KeyCode", Value = Enum.KeyCode.Two},
+    Three = {Type = "KeyCode", Value = Enum.KeyCode.Three},
+    Four = {Type = "KeyCode", Value = Enum.KeyCode.Four},
+    Five = {Type = "KeyCode", Value = Enum.KeyCode.Five},
+    LShift = {Type = "KeyCode", Value = Enum.KeyCode.LeftShift},
+    RShift = {Type = "KeyCode", Value = Enum.KeyCode.RightShift},
+    LCtrl = {Type = "KeyCode", Value = Enum.KeyCode.LeftControl},
+    RCtrl = {Type = "KeyCode", Value = Enum.KeyCode.RightControl},
+    LAlt = {Type = "KeyCode", Value = Enum.KeyCode.LeftAlt},
+    RAlt = {Type = "KeyCode", Value = Enum.KeyCode.RightAlt}
+}
 
-    local function ApplyGradient(obj)
-        if not (obj:IsA("Frame") or obj:IsA("TextLabel") or obj:IsA("TextButton")) then return end
-        obj.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        if obj:FindFirstChild("UIGradient") then return end
-        local gradient = Instance.new("UIGradient")
-        gradient.Rotation = 45
-        gradient.Parent = obj
-        local conn
-        conn = RunService.RenderStepped:Connect(function()
-            if not obj or not obj.Parent or not gradient.Parent then
-                pcall(function() conn:Disconnect() end)
-                return
+local function IsMatchingInput(input)
+    local bindInfo = bindMap[aimbotBind]
+    if not bindInfo then return false end
+    if bindInfo.Type == "UserInputType" then
+        return input.UserInputType == bindInfo.Value
+    elseif bindInfo.Type == "KeyCode" then
+        return input.KeyCode == bindInfo.Value
+    end
+    return false
+end
+
+local function IsVisible(localRoot, targetHead)
+    if not localRoot or not targetHead then return false end
+    local ray = Ray.new(localRoot.Position, (targetHead.Position - localRoot.Position).Unit * 1000)
+    local ignoreList = {LocalPlayer.Character}
+    local hit, _ = Workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+    return hit == nil or hit:IsDescendantOf(targetHead.Parent)
+end
+
+local function UpdateEspColor()
+    espColor = Color3.fromRGB(espRed, espGreen, espBlue)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            if player.Character:FindFirstChild("ESPHighlight") then
+                player.Character.ESPHighlight.FillColor = espColor
+                player.Character.ESPHighlight.OutlineColor = espColor
             end
-            local t = tick()
-            gradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, SmoothRainbowColor(t, 0.05)),
-                ColorSequenceKeypoint.new(0.5, SmoothRainbowColor(t + 10, 0.05)),
-                ColorSequenceKeypoint.new(1, SmoothRainbowColor(t + 20, 0.05))
-            })
-        end)
+            if player.Character:FindFirstChild("Head") and player.Character.Head:FindFirstChild("NameTag") then
+                player.Character.Head.NameTag.TagLabel.TextColor3 = espColor
+            end
+            if player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart:FindFirstChild("DistanceTag") then
+                player.Character.HumanoidRootPart.DistanceTag.TagLabel.TextColor3 = espColor
+            end
+        end
     end
+end
 
-    for _, obj in pairs(screenGui:GetDescendants()) do
-        ApplyGradient(obj)
+local function CaptureOriginals(char)
+    local humanoid = char:WaitForChild("Humanoid", 10)
+    if humanoid then
+        OriginalWalkSpeed = humanoid.WalkSpeed
+        OriginalJumpPower = humanoid.JumpPower
+        OriginalJumpHeight = humanoid.JumpHeight
+        OriginalUseJumpPower = humanoid.UseJumpPower
+        CurrentWalkSpeed = math.max(CurrentWalkSpeed, OriginalWalkSpeed)
+        CurrentJumpPower = math.max(CurrentJumpPower, OriginalJumpPower)
     end
+end
 
-    local descendantConn = screenGui.DescendantAdded:Connect(ApplyGradient)
-end)
+if LocalPlayer.Character then
+    CaptureOriginals(LocalPlayer.Character)
+end
 
--- Player variables
-local OriginalWalkSpeed = 16
-local OriginalJumpPower = 50
-local OriginalJumpHeight = 7.2
-local OriginalUseJumpPower = true
-local CurrentWalkSpeed = 16
-local CurrentJumpPower = 50
-local InfiniteJumpEnabled = false
-local NoclipEnabled = false
-local FlyEnabled = false
-local FlySpeed = 50
-local flyBodyGyro
-local flyBodyVelocity
-local flyConnection
-local noclipConnection
-local speedConnection
-local jumpConnection
-local trails = {}
-local trailsCharConn
-local particleEmitter
-local particlesCharConn
-local chinaHat
-local chinaHatConn
-local starTrailEmitter
-local starTrailConn
-local aimbotEnabled = false
-local aimbotFOV = 200
-local aimbotConnection
-local fovCircle
-local fovScreenGui
-local lockedTarget = nil
-local aimbotActive = false
-local aimbotBind = "MB2"
-local aimbotMode = "Hold"
-local SpinbotEnabled = false
-local SpinbotSpeed = 10
-local spinbotConnection
-local TeamCheckEnabled = false
-local teamCheckConnection
-local WallCheckEnabled = false
-local wallCheckConnection
-local espTextSize = 25
-local espColor = Color3.fromRGB(255, 255, 255)
-local espRed = 255
-local espGreen = 255
-local espBlue = 255
-local trollGuiLoaded = false
-local highlightEspEnabled = false
-local nameEspEnabled = false
-local distanceEspEnabled = false
-local EspTeamCheckEnabled = false
+LocalPlayer.CharacterAdded:Connect(CaptureOriginals)
 
 -- УЛУЧШЕННАЯ СИСТЕМА ПОЛЕТА ДЛЯ ПК И МОБИЛЬНЫХ УСТРОЙСТВ
 local function EnableFly()
@@ -327,7 +456,6 @@ local function EnableFly()
         local moveDirection = Vector3.new(0, 0, 0)
         
         if mobileInputActive then
-            -- Преобразование джойстика в 3D движение относительно камеры
             local cameraCF = camera.CFrame
             local right = cameraCF.RightVector
             local forward = cameraCF.LookVector
@@ -386,7 +514,6 @@ local function EnableFly()
         local viewportSize = Workspace.CurrentCamera.ViewportSize
         local touchPos = input.Position
         
-        -- Левая часть экрана для движения джойстиком
         if touchPos.X < viewportSize.X / 2 then
             touchId = input
             touchStartPos = touchPos
@@ -400,7 +527,6 @@ local function EnableFly()
                     
                     if distance > 5 then
                         local direction = delta.Unit
-                        -- Нормализованные значения для плавного управления
                         mobileMoveDirection = Vector3.new(
                             direction.X * (distance / joystickRadius),
                             direction.Y * (distance / joystickRadius),
@@ -424,16 +550,15 @@ local function EnableFly()
                 end
             end)
         else
-            -- Правая часть для управления высотой
             touchId = input
             local touchY = touchPos.Y
             
             if touchY < viewportSize.Y / 3 then
-                mobileVertical = 1 -- Вверх
+                mobileVertical = 1
             elseif touchY > viewportSize.Y * 2/3 then
-                mobileVertical = -1 -- Вниз
+                mobileVertical = -1
             else
-                mobileVertical = 0 -- Нейтрально
+                mobileVertical = 0
             end
             
             UserInputService.TouchEnded:Connect(function(endInput)
@@ -491,104 +616,155 @@ local function DisableFly()
     end
 end
 
--- Bind mappings
-local bindMap = {
-    MB1 = {Type = "UserInputType", Value = Enum.UserInputType.MouseButton1},
-    MB2 = {Type = "UserInputType", Value = Enum.UserInputType.MouseButton2},
-    MB3 = {Type = "UserInputType", Value = Enum.UserInputType.MouseButton3},
-    Q = {Type = "KeyCode", Value = Enum.KeyCode.Q},
-    E = {Type = "KeyCode", Value = Enum.KeyCode.E},
-    R = {Type = "KeyCode", Value = Enum.KeyCode.R},
-    T = {Type = "KeyCode", Value = Enum.KeyCode.T},
-    Y = {Type = "KeyCode", Value = Enum.KeyCode.Y},
-    U = {Type = "KeyCode", Value = Enum.KeyCode.U},
-    I = {Type = "KeyCode", Value = Enum.KeyCode.I},
-    O = {Type = "KeyCode", Value = Enum.KeyCode.O},
-    P = {Type = "KeyCode", Value = Enum.KeyCode.P},
-    F = {Type = "KeyCode", Value = Enum.KeyCode.F},
-    G = {Type = "KeyCode", Value = Enum.KeyCode.G},
-    H = {Type = "KeyCode", Value = Enum.KeyCode.H},
-    J = {Type = "KeyCode", Value = Enum.KeyCode.J},
-    K = {Type = "KeyCode", Value = Enum.KeyCode.K},
-    L = {Type = "KeyCode", Value = Enum.KeyCode.L},
-    Z = {Type = "KeyCode", Value = Enum.KeyCode.Z},
-    X = {Type = "KeyCode", Value = Enum.KeyCode.X},
-    C = {Type = "KeyCode", Value = Enum.KeyCode.C},
-    V = {Type = "KeyCode", Value = Enum.KeyCode.V},
-    B = {Type = "KeyCode", Value = Enum.KeyCode.B},
-    N = {Type = "KeyCode", Value = Enum.KeyCode.N},
-    M = {Type = "KeyCode", Value = Enum.KeyCode.M},
-    One = {Type = "KeyCode", Value = Enum.KeyCode.One},
-    Two = {Type = "KeyCode", Value = Enum.KeyCode.Two},
-    Three = {Type = "KeyCode", Value = Enum.KeyCode.Three},
-    Four = {Type = "KeyCode", Value = Enum.KeyCode.Four},
-    Five = {Type = "KeyCode", Value = Enum.KeyCode.Five},
-    LShift = {Type = "KeyCode", Value = Enum.KeyCode.LeftShift},
-    RShift = {Type = "KeyCode", Value = Enum.KeyCode.RightShift},
-    LCtrl = {Type = "KeyCode", Value = Enum.KeyCode.LeftControl},
-    RCtrl = {Type = "KeyCode", Value = Enum.KeyCode.RightControl},
-    LAlt = {Type = "KeyCode", Value = Enum.KeyCode.LeftAlt},
-    RAlt = {Type = "KeyCode", Value = Enum.KeyCode.RightAlt}
-}
-
--- Function to check if input matches bind
-local function IsMatchingInput(input)
-    local bindInfo = bindMap[aimbotBind]
-    if not bindInfo then return false end
-    if bindInfo.Type == "UserInputType" then
-        return input.UserInputType == bindInfo.Value
-    elseif bindInfo.Type == "KeyCode" then
-        return input.KeyCode == bindInfo.Value
-    end
-    return false
+-- Fling All Functions
+local function safeHRP(char)
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
 end
 
--- Function to check if target is visible
-local function IsVisible(localRoot, targetHead)
-    if not localRoot or not targetHead then return false end
-    local ray = Ray.new(localRoot.Position, (targetHead.Position - localRoot.Position).Unit * 1000)
-    local ignoreList = {LocalPlayer.Character}
-    local hit, _ = Workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
-    return hit == nil or hit:IsDescendantOf(targetHead.Parent)
+local function horizontalLook(fromPos, toPos)
+    local dir = toPos - fromPos
+    dir = Vector3.new(dir.X, 0, dir.Z)
+    if dir.Magnitude == 0 then return CFrame.new(fromPos) end
+    return CFrame.new(fromPos, fromPos + dir.Unit)
 end
 
--- Function to update Esp color
-local function UpdateEspColor()
-    espColor = Color3.fromRGB(espRed, espGreen, espBlue)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            if player.Character:FindFirstChild("ESPHighlight") then
-                player.Character.ESPHighlight.FillColor = espColor
-                player.Character.ESPHighlight.OutlineColor = espColor
-            end
-            if player.Character:FindFirstChild("Head") and player.Character.Head:FindFirstChild("NameTag") then
-                player.Character.Head.NameTag.TagLabel.TextColor3 = espColor
-            end
-            if player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart:FindFirstChild("DistanceTag") then
-                player.Character.HumanoidRootPart.DistanceTag.TagLabel.TextColor3 = espColor
-            end
+local function setFlingNoclip(on)
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            pcall(function() part.CanCollide = not on and part.CanCollide end)
         end
     end
 end
 
--- Capture original WalkSpeed and JumpPower
-local function CaptureOriginals(char)
-    local humanoid = char:WaitForChild("Humanoid", 10)
-    if humanoid then
-        OriginalWalkSpeed = humanoid.WalkSpeed
-        OriginalJumpPower = humanoid.JumpPower
-        OriginalJumpHeight = humanoid.JumpHeight
-        OriginalUseJumpPower = humanoid.UseJumpPower
-        CurrentWalkSpeed = math.max(CurrentWalkSpeed, OriginalWalkSpeed)
-        CurrentJumpPower = math.max(CurrentJumpPower, OriginalJumpPower)
+local function startFlingNoclipLoop()
+    if flingNoclipConn then return end
+    flingNoclipConn = RunService.Stepped:Connect(function()
+        if not flingRunning then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end)
+end
+
+local function stopFlingNoclipLoop()
+    if flingNoclipConn then flingNoclipConn:Disconnect(); flingNoclipConn = nil end
+end
+
+local function localPush(strength, life)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = safeHRP(char)
+    if not hrp then return end
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(1e6,1e6,1e6)
+    bv.Velocity = hrp.CFrame.LookVector * strength + Vector3.new(0, 120, 0)
+    bv.Parent = hrp
+    Debris:AddItem(bv, life or 0.12)
+end
+
+local function clearSpin(hrp)
+    if not hrp then return end
+    for _, child in ipairs(hrp:GetChildren()) do
+        if child:IsA("BodyAngularVelocity") and child.Name == "LocalSpin" then
+            child:Destroy()
+        end
     end
 end
 
-if LocalPlayer.Character then
-    CaptureOriginals(LocalPlayer.Character)
+local function applySpin(hrp, angVel)
+    if not hrp then return end
+    clearSpin(hrp)
+    local bav = Instance.new("BodyAngularVelocity")
+    bav.Name = "LocalSpin"
+    bav.MaxTorque = Vector3.new(1e8,1e8,1e8)
+    bav.AngularVelocity = angVel or Vector3.new(0,12000,0)
+    bav.Parent = hrp
+    return bav
 end
 
-LocalPlayer.CharacterAdded:Connect(CaptureOriginals)
+local function overlapInto(targetHrp)
+    local char = LocalPlayer.Character
+    if not char or not targetHrp or not targetHrp.Parent then return false end
+    local hrp = safeHRP(char)
+    if not hrp then return false end
+    setFlingNoclip(true)
+    for _ = 1,5 do
+        local offset = Vector3.new((math.random()-0.5)*0.4, (math.random()-0.5)*0.2, (math.random()-0.5)*0.4)
+        local destPos = targetHrp.Position + offset
+        local faceCf = horizontalLook(destPos, targetHrp.Position)
+        pcall(function() hrp.CFrame = CFrame.new(destPos) end)
+        pcall(function() hrp.CFrame = faceCf end)
+        RunService.RenderStepped:Wait()
+    end
+    return true
+end
+
+local function holdAndSpin(target, duration, spinSpeed)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = safeHRP(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+    local thrp = safeHRP(target.Character)
+    if not thrp then return end
+    overlapInto(thrp)
+    local spinObj = applySpin(hrp, Vector3.new(0, spinSpeed, 0))
+    local stopAt = tick() + duration
+    while tick() < stopAt do
+        if not LocalPlayer.Character or not target.Character or not thrp.Parent then break end
+        pcall(overlapInto, thrp)
+        localPush(90 + math.random(-10,10), 0.12)
+        RunService.Heartbeat:Wait()
+    end
+    if spinObj and spinObj.Parent then spinObj:Destroy() end
+    clearSpin(hrp)
+end
+
+local function runFlingCycle()
+    if flingRunning then return end
+    flingRunning = true
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    setFlingNoclip(true)
+    startFlingNoclipLoop()
+    task.wait(0.06)
+    while flingRunning do
+        local list = {}
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and safeHRP(p.Character) then
+                table.insert(list, p)
+            end
+        end
+        for _, target in ipairs(list) do
+            if not flingRunning then break end
+            pcall(function() holdAndSpin(target, math.random(2,3), 12000) end)
+            task.wait(0.1)
+        end
+        task.wait(0.5)
+    end
+    setFlingNoclip(false)
+    stopFlingNoclipLoop()
+    flingRunning = false
+end
+
+local function stopFlingCycle()
+    flingRunning = false
+    setFlingNoclip(false)
+    stopFlingNoclipLoop()
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = safeHRP(char)
+        clearSpin(hrp)
+    end
+end
+
+-- MODULES SECTION --
 
 -- Jump Effect
 EffectManager:RegisterEffect("Jump effect", function()
@@ -1197,6 +1373,7 @@ local function CleanupAll()
     SpinbotEnabled = false
     TeamCheckEnabled = false
     WallCheckEnabled = false
+    FlingAllEnabled = false
 
     if speedConnection then
         pcall(function() speedConnection:Disconnect() end)
@@ -1258,6 +1435,10 @@ local function CleanupAll()
         pcall(function() aimbotConnection:Disconnect() end)
         aimbotConnection = nil
     end
+    if flingNoclipConn then
+        pcall(function() flingNoclipConn:Disconnect() end)
+        flingNoclipConn = nil
+    end
 
     if chinaHat then
         pcall(function() chinaHat:Destroy() end)
@@ -1283,6 +1464,8 @@ local function CleanupAll()
     Spinbot:DisableSpinbot()
     TeamCheck:DisableTeamCheck()
     WallCheck:DisableWallCheck()
+    
+    stopFlingCycle()
     
     local char = LocalPlayer.Character
     if char then
@@ -1315,56 +1498,12 @@ local function CleanupAll()
     ContextActionService:UnbindAction("FlyMobile")
 end
 
--- Define tabs
-local Tabs = {
-    Visual = Window:Tab({ Title = "Visual", Icon = "palette" }),
-    Player = Window:Tab({ Title = "Player", Icon = "user" }),
-    Wallhack = Window:Tab({ Title = "Wallhack", Icon = "eye" }),
-    Aimbot = Window:Tab({ Title = "Aimbot", Icon = "sword" }),
-    Movement = Window:Tab({ Title = "Movement", Icon = "zap" }),
-    Troll = Window:Tab({ Title = "Troll", Icon = "smile" }),
-    Settings = Window:Tab({ Title = "Settings", Icon = "settings" }),
-    Themes = Window:Tab({ Title = "Themes", Icon = "palette" })
-}
+-- GUI ELEMENTS SECTION --
 
--- Define sections
-local VisualEffectsSection = Tabs.Visual:Section({ Title = "Visual Effects" })
-local ClearVisualSection = Tabs.Visual:Section({ Title = "Clear Visuals" })
-local PlayerModsSection = Tabs.Player:Section({ Title = "Player Mods" })
-local EspSection = Tabs.Wallhack:Section({ Title = "Player Esp" })
-local SizeEspSection = Tabs.Wallhack:Section({ Title = "Size Esp" })
-local ColorEspSection = Tabs.Wallhack:Section({ Title = "Settings Color Esp" })
-local AimbotSection = Tabs.Aimbot:Section({ Title = "Aimbot" })
-local MovementSection = Tabs.Movement:Section({ Title = "Movement" })
-local TrollGuiSection = Tabs.Troll:Section({ Title = "Troll Gui" })
-local SettingsUiSection = Tabs.Settings:Section({ Title = "Ui Settings" })
-local ThemesSection = Tabs.Themes:Section({ Title = "Theme Selector" })
-
--- Expand all sections
-task.spawn(function()
-    task.wait(0.1)
-    local CoreGui = game:GetService("CoreGui")
-    local screenGui = CoreGui:FindFirstChild("WindUI")
-    if not screenGui then return end
-
-    for _, frame in pairs(screenGui:GetDescendants()) do
-        if frame:IsA("Frame") and frame.Name:match("Section") then
-            for _, child in pairs(frame:GetChildren()) do
-                if child:IsA("Frame") and child.Visible == false then
-                    child.Visible = true
-                end
-            end
-        end
-    end
-end)
-
--- Store all toggles for cleanup
-local allToggles = {}
-
--- Troll GUI toggle
-local trollToggle = TrollGuiSection:Toggle({
-    Title = "Troll Gui",
-    Desc = "Enable/Disable Troll Gui",
+-- Fling GUI toggle
+local flingGuiToggle = FlingGuiSection:Toggle({
+    Title = "Fling GUI V1",
+    Desc = "Enable/Disable Fling GUI",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -1383,16 +1522,32 @@ local trollToggle = TrollGuiSection:Toggle({
             end
         end)
         if not success then
-            warn("Troll Gui toggle failed: " .. tostring(err))
+            warn("Fling GUI toggle failed: " .. tostring(err))
         end
     end
 })
-allToggles.TrollGui = trollToggle
+allToggles.FlingGui = flingGuiToggle
+
+-- Fling All toggle
+local flingAllToggle = FlingGuiSection:Toggle({
+    Title = "Fling All V2",
+    Desc = "Enable Fling All Feature",
+    Value = false,
+    Callback = function(state)
+        FlingAllEnabled = state
+        if state then
+            task.spawn(runFlingCycle)
+        else
+            stopFlingCycle()
+        end
+    end
+})
+allToggles.FlingAll = flingAllToggle
 
 -- Combat toggles, sliders, and dropdowns
 local aimbotToggle = AimbotSection:Toggle({
-    Title = "Aimbot",
-    Desc = "Enable aimbot feature",
+    Title = "Aimbot For PC By Bind",
+    Desc = "Enable Aimbot Feature",
     Value = false,
     Callback = function(state)
         aimbotEnabled = state
@@ -1412,7 +1567,7 @@ allToggles.Aimbot = aimbotToggle
 
 AimbotSection:Dropdown({
     Title = "Aimbot Bind",
-    Desc = "Select bind for aimbot",
+    Desc = "Select Bind For Aimbot",
     Values = {
         "MB1", "MB2", "MB3", "Q", "E", "R", "T", "Y", "U", "I", "O", "P",
         "F", "G", "H", "J", "K", "L", "Z", "X", "C", "V", "B", "N", "M",
@@ -1427,7 +1582,7 @@ AimbotSection:Dropdown({
 
 AimbotSection:Dropdown({
     Title = "Aimbot Mode",
-    Desc = "Select aimbot mode",
+    Desc = "Select Aimbot Mode",
     Values = {"Hold", "Toggle"},
     Value = "Hold",
     Callback = function(value)
@@ -1441,8 +1596,8 @@ AimbotSection:Dropdown({
 })
 
 AimbotSection:Slider({
-    Title = "Aimbot Fov",
-    Desc = "Set aimbot FOV (10-500)",
+    Title = "Aimbot FOV",
+    Desc = "Set Aimbot FOV (10-500)",
     Value = { Min = 10, Max = 500, Default = 200 },
     Callback = function(value)
         aimbotFOV = value
@@ -1454,7 +1609,7 @@ AimbotSection:Slider({
 
 local teamCheckToggle = AimbotSection:Toggle({
     Title = "Team Check",
-    Desc = "Enable team check",
+    Desc = "Enable Team Check",
     Value = false,
     Callback = function(state)
         TeamCheckEnabled = state
@@ -1469,7 +1624,7 @@ allToggles.TeamCheck = teamCheckToggle
 
 local wallCheckToggle = AimbotSection:Toggle({
     Title = "Wall Check",
-    Desc = "Enable wall check",
+    Desc = "Enable Wall Check",
     Value = false,
     Callback = function(state)
         WallCheckEnabled = state
@@ -1482,9 +1637,33 @@ local wallCheckToggle = AimbotSection:Toggle({
 })
 allToggles.WallCheck = wallCheckToggle
 
-local spinbotToggle = MovementSection:Toggle({
+-- Aimbot Telephone Section
+local aimbotTelephoneToggle = AimbotTelephoneSection:Toggle({
+    Title = "Aimbot For Telephone By GUI",
+    Desc = "Enable/Disable Aimbot GUI",
+    Value = false,
+    Callback = function(state)
+        local success, err = pcall(function()
+            if state then
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/zood1k/PrX1.7.2betaAimBot/main/PrXaimbot", true))()
+            else
+                local CoreGui = game:GetService("CoreGui")
+                local aimbotGui = CoreGui:FindFirstChild("MobileAimbotGUI")
+                if aimbotGui then
+                    aimbotGui:Destroy()
+                end
+            end
+        end)
+        if not success then
+            warn("Aimbot Telephone toggle failed: " .. tostring(err))
+        end
+    end
+})
+allToggles.AimbotTelephone = aimbotTelephoneToggle
+
+local spinbotToggle = MovementSpinbotSection:Toggle({
     Title = "Spinbot",
-    Desc = "Enable spinbot",
+    Desc = "Enable Spinbot",
     Value = false,
     Callback = function(state)
         SpinbotEnabled = state
@@ -1497,9 +1676,9 @@ local spinbotToggle = MovementSection:Toggle({
 })
 allToggles.Spinbot = spinbotToggle
 
-MovementSection:Slider({
+MovementSpinbotSection:Slider({
     Title = "Spinbot Speed",
-    Desc = "Set spinbot speed (1-30)",
+    Desc = "Set Spinbot Speed (1-30)",
     Value = { Min = 1, Max = 30, Default = 10 },
     Callback = function(value)
         SpinbotSpeed = value
@@ -1507,9 +1686,9 @@ MovementSection:Slider({
 })
 
 -- УЛУЧШЕННЫЙ ПОЛЕТ С ОПТИМИЗИРОВАННЫМ УПРАВЛЕНИЕМ
-local flyToggle = MovementSection:Toggle({
-    Title = "Fly",
-    Desc = "Enable optimized fly (WASD for PC, joystick for mobile)",
+local flyToggle = MovementFlySection:Toggle({
+    Title = "Fly PC",
+    Desc = "Enable Fly For PC",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -1521,15 +1700,15 @@ local flyToggle = MovementSection:Toggle({
             end
         end)
         if not success then
-            warn("Fly toggle failed: " .. tostring(err))
+            warn("Fly PC toggle failed: " .. tostring(err))
         end
     end
 })
 allToggles.Fly = flyToggle
 
-MovementSection:Slider({
+MovementFlySection:Slider({
     Title = "Fly Speed",
-    Desc = "Set fly speed (10-200)",
+    Desc = "Set Fly Speed (10-200)",
     Value = { Min = 10, Max = 200, Default = 50 },
     Callback = function(value)
         local success, err = pcall(function()
@@ -1537,6 +1716,24 @@ MovementSection:Slider({
         end)
         if not success then
             warn("Fly Speed slider failed: " .. tostring(err))
+        end
+    end
+})
+
+-- Fly for Telephone Button
+MovementFlySection:Button({
+    Title = "Fly Telephone",
+    Desc = "Enable Fly For Telephone",
+    Icon = "smartphone",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+            local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+            local Gui = PlayerGui:WaitForChild("SuperFlingGui")
+            Gui.Enabled = true
+        end)
+        if not success then
+            warn("Fly Telephone button failed: " .. tostring(err))
         end
     end
 })
@@ -1569,8 +1766,8 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local highlightEspToggle = EspSection:Toggle({
-    Title = "Highlight Esp",
-    Desc = "Enable highlight Esp",
+    Title = "Highlight ESP",
+    Desc = "Enable Highlight ESP",
     Value = false,
     Callback = function(state)
         highlightEspEnabled = state
@@ -1584,8 +1781,8 @@ local highlightEspToggle = EspSection:Toggle({
 allToggles.HighlightESP = highlightEspToggle
 
 local nameEspToggle = EspSection:Toggle({
-    Title = "Name Esp",
-    Desc = "Enable name Esp",
+    Title = "Name ESP",
+    Desc = "Enable Name ESP",
     Value = false,
     Callback = function(state)
         nameEspEnabled = state
@@ -1599,8 +1796,8 @@ local nameEspToggle = EspSection:Toggle({
 allToggles.NameESP = nameEspToggle
 
 local distanceEspToggle = EspSection:Toggle({
-    Title = "Distance Esp",
-    Desc = "Enable distance Esp",
+    Title = "Distance ESP",
+    Desc = "Enable Distance ESP",
     Value = false,
     Callback = function(state)
         distanceEspEnabled = state
@@ -1615,7 +1812,7 @@ allToggles.DistanceESP = distanceEspToggle
 
 local espTeamCheckToggle = EspSection:Toggle({
     Title = "Team Check",
-    Desc = "Do not highlight teammates",
+    Desc = "Do Not Highlight Teammates",
     Value = false,
     Callback = function(state)
         EspTeamCheckEnabled = state
@@ -1636,8 +1833,8 @@ local espTeamCheckToggle = EspSection:Toggle({
 allToggles.EspTeamCheck = espTeamCheckToggle
 
 SizeEspSection:Slider({
-    Title = "Size Esp",
-    Desc = "Set Esp text size (10-50)",
+    Title = "Size ESP",
+    Desc = "Set ESP Text Size (10-50)",
     Value = { Min = 10, Max = 50, Default = 25 },
     Callback = function(value)
         espTextSize = value
@@ -1655,8 +1852,8 @@ SizeEspSection:Slider({
 })
 
 ColorEspSection:Slider({
-    Title = "Red Esp",
-    Desc = "Set red color component (0-255)",
+    Title = "Red ESP",
+    Desc = "Set Red Color Component (0-255)",
     Value = { Min = 0, Max = 255, Default = 255 },
     Callback = function(value)
         espRed = value
@@ -1665,8 +1862,8 @@ ColorEspSection:Slider({
 })
 
 ColorEspSection:Slider({
-    Title = "Green Esp",
-    Desc = "Set green color component (0-255)",
+    Title = "Green ESP",
+    Desc = "Set Green Color Component (0-255)",
     Value = { Min = 0, Max = 255, Default = 255 },
     Callback = function(value)
         espGreen = value
@@ -1675,8 +1872,8 @@ ColorEspSection:Slider({
 })
 
 ColorEspSection:Slider({
-    Title = "Blue Esp",
-    Desc = "Set blue color component (0-255)",
+    Title = "Blue ESP",
+    Desc = "Set Blue Color Component (0-255)",
     Value = { Min = 0, Max = 255, Default = 255 },
     Callback = function(value)
         espBlue = value
@@ -1687,7 +1884,7 @@ ColorEspSection:Slider({
 -- Fixed China Hat with ultra smooth color transitions
 local chinaHatToggle = VisualEffectsSection:Toggle({
     Title = "China Hat",
-    Desc = "Enable China hat effect",
+    Desc = "Enable China Hat Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -1723,7 +1920,6 @@ local chinaHatToggle = VisualEffectsSection:Toggle({
                     chinaHat.Parent = char
                     weld.Parent = chinaHat
 
-                    -- Ultra smooth color transitions with delta time
                     local lastUpdate = tick()
                     local currentHue = 0
                     
@@ -1737,7 +1933,6 @@ local chinaHatToggle = VisualEffectsSection:Toggle({
                         local deltaTime = t - lastUpdate
                         lastUpdate = t
                         
-                        -- Очень медленное изменение hue (полный цикл за 30 секунд)
                         currentHue = (currentHue + deltaTime * 0.033) % 1
                         local targetColor = Color3.fromHSV(currentHue, 1, 1)
                         
@@ -1781,7 +1976,7 @@ allToggles.ChinaHat = chinaHatToggle
 
 local trailsToggle = VisualEffectsSection:Toggle({
     Title = "Rainbow Trails",
-    Desc = "Enable rainbow trails effect",
+    Desc = "Enable Rainbow Trails Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -1885,7 +2080,7 @@ allToggles.Trails = trailsToggle
 
 local jumpEffectToggle = VisualEffectsSection:Toggle({
     Title = "Jump Effect",
-    Desc = "Enable jump effect",
+    Desc = "Enable Jump Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -1904,7 +2099,7 @@ allToggles.JumpEffect = jumpEffectToggle
 
 local particlesToggle = VisualEffectsSection:Toggle({
     Title = "Floating Particles",
-    Desc = "Enable floating particles effect",
+    Desc = "Enable Floating Particles Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -1979,7 +2174,7 @@ local neonGlowConnection
 
 local neonGlowToggle = VisualEffectsSection:Toggle({
     Title = "Neon Glow",
-    Desc = "Enable full character neon glow",
+    Desc = "Enable Full Character Neon Glow",
     Value = false,
     Callback = function(state)
         neonGlowEnabled = state
@@ -2063,7 +2258,7 @@ allToggles.NeonGlow = neonGlowToggle
 
 local starTrailToggle = VisualEffectsSection:Toggle({
     Title = "Star Trail",
-    Desc = "Enable star trail effect",
+    Desc = "Enable Star Trail Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2105,7 +2300,7 @@ allToggles.StarTrail = starTrailToggle
 -- Fixed Color Shift with proper implementation
 local colorShiftToggle = VisualEffectsSection:Toggle({
     Title = "Color Shift",
-    Desc = "Enable color shift effect",
+    Desc = "Enable Color Shift Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2113,7 +2308,6 @@ local colorShiftToggle = VisualEffectsSection:Toggle({
                 local function ApplyColorShift(char)
                     local lighting = game:GetService("Lighting")
                     
-                    -- Create ColorCorrectionEffect if it doesn't exist
                     local colorEffect = lighting:FindFirstChild("ColorShiftEffect")
                     if not colorEffect then
                         colorEffect = Instance.new("ColorCorrectionEffect")
@@ -2121,7 +2315,6 @@ local colorShiftToggle = VisualEffectsSection:Toggle({
                         colorEffect.Parent = lighting
                     end
                     
-                    -- Enable the effect
                     colorEffect.Enabled = true
                     colorEffect.TintColor = SmoothRainbowColor(tick(), 0.05)
                     
@@ -2168,7 +2361,7 @@ allToggles.ColorShift = colorShiftToggle
 
 local fireAuraToggle = VisualEffectsSection:Toggle({
     Title = "Fire Aura",
-    Desc = "Enable fire aura effect",
+    Desc = "Enable Fire Aura Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2187,7 +2380,7 @@ allToggles.FireAura = fireAuraToggle
 
 local smokeTrailToggle = VisualEffectsSection:Toggle({
     Title = "Smoke Trail",
-    Desc = "Enable smoke trail effect",
+    Desc = "Enable Smoke Trail Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2206,7 +2399,7 @@ allToggles.SmokeTrail = smokeTrailToggle
 
 local sparkleBodyToggle = VisualEffectsSection:Toggle({
     Title = "Body Sparkles",
-    Desc = "Enable body sparkles effect",
+    Desc = "Enable Body Sparkles Effect",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2225,7 +2418,7 @@ allToggles.SparkleBody = sparkleBodyToggle
 
 ClearVisualSection:Button({
     Title = "Clear",
-    Desc = "Clear all visuals",
+    Desc = "Clear All Visuals",
     Icon = "trash-2",
     Callback = function()
         local success, err = pcall(function()
@@ -2244,7 +2437,7 @@ ClearVisualSection:Button({
 
 local speedToggle = PlayerModsSection:Toggle({
     Title = "Speed",
-    Desc = "Enable speed hack",
+    Desc = "Enable Speed Hack",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2279,7 +2472,7 @@ allToggles.Speed = speedToggle
 
 PlayerModsSection:Slider({
     Title = "Speed Changer",
-    Desc = "Set walk speed (16-200)",
+    Desc = "Set Walk Speed (16-200)",
     Value = { Min = 16, Max = 200, Default = 16 },
     Callback = function(value)
         local success, err = pcall(function()
@@ -2299,7 +2492,7 @@ PlayerModsSection:Slider({
 
 local jumpToggle = PlayerModsSection:Toggle({
     Title = "Jump",
-    Desc = "Enable jump power hack",
+    Desc = "Enable Jump Power Hack",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2340,7 +2533,7 @@ allToggles.Jump = jumpToggle
 
 PlayerModsSection:Slider({
     Title = "Jump Changer",
-    Desc = "Set jump power (50-300)",
+    Desc = "Set Jump Power (50-300)",
     Value = { Min = 50, Max = 300, Default = 50 },
     Callback = function(value)
         local success, err = pcall(function()
@@ -2360,7 +2553,7 @@ PlayerModsSection:Slider({
 
 local infiniteJumpToggle = PlayerModsSection:Toggle({
     Title = "Infinite Jump",
-    Desc = "Enable infinite jump",
+    Desc = "Enable Infinite Jump",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2376,7 +2569,7 @@ allToggles.InfiniteJump = infiniteJumpToggle
 -- Fixed Noclip to not interfere with climbing
 local noclipToggle = PlayerModsSection:Toggle({
     Title = "Noclip",
-    Desc = "Enable noclip (pass through walls)",
+    Desc = "Enable Noclip (Pass Through Walls)",
     Value = false,
     Callback = function(state)
         local success, err = pcall(function()
@@ -2389,7 +2582,7 @@ local noclipToggle = PlayerModsSection:Toggle({
                         if not char then return end
                         local humanoid = char:FindFirstChild("Humanoid")
                         if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Climbing then
-                            return -- Don't noclip while climbing
+                            return
                         end
                         for _, part in pairs(char:GetDescendants()) do
                             if part:IsA("BasePart") then
@@ -2420,10 +2613,28 @@ local noclipToggle = PlayerModsSection:Toggle({
 })
 allToggles.Noclip = noclipToggle
 
+-- Theme selector with saving and tag color persistence
+ThemesSection:Dropdown({
+    Title = "Select Theme",
+    Desc = "Change The UI Theme",
+    Values = {
+        "Dark", "Light", "Rose", "Amber", "CottonCandy",
+        "Crimson", "Emerald", "Indigo", "Midnight",
+        "MonokaiPro", "Plant", "Rainbow", "Red",
+        "Violet", "Sky"
+    },
+    Value = currentTheme,
+    Callback = function(value)
+        WindUi:SetTheme(value)
+        SaveSettings(value, savedTagColors)
+        UpdateTagColors(value)
+    end
+})
+
 -- Settings UI with improved Destroy function
 SettingsUiSection:Button({
     Title = "Destroy UI",
-    Desc = "Destroy the UI and cleanup",
+    Desc = "Destroy The UI And Cleanup",
     Icon = "trash-2",
     Callback = function()
         local success, err = pcall(function()
@@ -2436,31 +2647,10 @@ SettingsUiSection:Button({
             if screenGui then
                 screenGui:Destroy()
             end
-            if guiToggleConnection then
-                guiToggleConnection:Disconnect()
-                guiToggleConnection = nil
-            end
         end)
         if not success then
             warn("Destroy UI button failed: " .. tostring(err))
         end
-    end
-})
-
--- Theme selector with saving
-ThemesSection:Dropdown({
-    Title = "Select Theme",
-    Desc = "Change the UI theme",
-    Values = {
-        "Dark", "Light", "Rose", "Amber", "CottonCandy",
-        "Crimson", "Emerald", "Indigo", "Midnight",
-        "MonokaiPro", "Plant", "Rainbow", "Red",
-        "Violet", "Sky"
-    },
-    Value = currentTheme,
-    Callback = function(value)
-        WindUi:SetTheme(value)
-        SaveTheme(value)
     end
 })
 
